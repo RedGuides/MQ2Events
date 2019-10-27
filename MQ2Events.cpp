@@ -39,7 +39,7 @@
 //
 //
 
-#include <MQ2Plugin.h>
+#include <mq/Plugin.h>
 PreSetup("MQ2Events");
 PLUGIN_VERSION(2.2);
 
