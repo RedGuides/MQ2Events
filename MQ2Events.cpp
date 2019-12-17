@@ -40,10 +40,11 @@
 //
 
 #include <mq/Plugin.h>
+
 PreSetup("MQ2Events");
 PLUGIN_VERSION(2.2);
 
-#define MY_MAX_STRING 25
+constexpr auto MY_MAX_STRING = 25;
 
 VOID EventCommand(PSPAWNINFO pChar, PCHAR szLine);
 void __stdcall MyEvent(unsigned int ID, void *pData, PBLECHVALUE pValues);
@@ -182,12 +183,12 @@ PLUGIN_API DWORD OnIncomingChat(PCHAR Line, DWORD Color)
 VOID Update_INIFileName()
 {
 	if (GetCharInfo()) {
-		sprintf_s(INIFileName, "%s\\MQ2Events_%s.ini", gszINIPath, GetCharInfo()->Name);
+		sprintf_s(INIFileName, "%s\\MQ2Events_%s.ini", gPathConfig, GetCharInfo()->Name);
 		if (!_FileExists(INIFileName))
-			sprintf_s(INIFileName, "%s\\MQ2Events.ini", gszINIPath);
+			sprintf_s(INIFileName, "%s\\MQ2Events.ini", gPathConfig);
 	}
 	else
-		sprintf_s(INIFileName, "%s\\MQ2Events.ini", gszINIPath);
+		sprintf_s(INIFileName, "%s\\MQ2Events.ini", gPathConfig);
 }
 
 VOID EventCommand(PSPAWNINFO pChar, PCHAR szLine)
