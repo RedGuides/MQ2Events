@@ -415,62 +415,62 @@ VOID LoadMyEvents()
 bool dataTriggerVar1(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar1;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar2(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar2;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar3(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar3;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar4(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar4;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar5(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar5;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar6(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar6;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar7(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar7;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar8(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar8;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar9(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar9;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
