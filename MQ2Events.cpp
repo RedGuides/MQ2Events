@@ -39,25 +39,26 @@
 //
 //
 
-#include "../MQ2Plugin.h"
+#include <mq/Plugin.h>
+
 PreSetup("MQ2Events");
 PLUGIN_VERSION(2.2);
 
-#define MY_MAX_STRING 25
+constexpr auto MY_MAX_STRING = 25;
 
 VOID EventCommand(PSPAWNINFO pChar, PCHAR szLine);
 void __stdcall MyEvent(unsigned int ID, void *pData, PBLECHVALUE pValues);
 VOID LoadMyEvents();
 char TriggerVar1[MAX_STRING], TriggerVar2[MAX_STRING], TriggerVar3[MAX_STRING], TriggerVar4[MAX_STRING], TriggerVar5[MAX_STRING], TriggerVar6[MAX_STRING], TriggerVar7[MAX_STRING], TriggerVar8[MAX_STRING], TriggerVar9[MAX_STRING];
-BOOL dataTriggerVar1(PCHAR szIndex, MQ2TYPEVAR &Ret);
-BOOL dataTriggerVar2(PCHAR szIndex, MQ2TYPEVAR &Ret);
-BOOL dataTriggerVar3(PCHAR szIndex, MQ2TYPEVAR &Ret);
-BOOL dataTriggerVar4(PCHAR szIndex, MQ2TYPEVAR &Ret);
-BOOL dataTriggerVar5(PCHAR szIndex, MQ2TYPEVAR &Ret);
-BOOL dataTriggerVar6(PCHAR szIndex, MQ2TYPEVAR &Ret);
-BOOL dataTriggerVar7(PCHAR szIndex, MQ2TYPEVAR &Ret);
-BOOL dataTriggerVar8(PCHAR szIndex, MQ2TYPEVAR &Ret);
-BOOL dataTriggerVar9(PCHAR szIndex, MQ2TYPEVAR &Ret);
+bool dataTriggerVar1(const char* szIndex, MQTypeVar& Ret);
+bool dataTriggerVar2(const char* szIndex, MQTypeVar& Ret);
+bool dataTriggerVar3(const char* szIndex, MQTypeVar& Ret);
+bool dataTriggerVar4(const char* szIndex, MQTypeVar& Ret);
+bool dataTriggerVar5(const char* szIndex, MQTypeVar& Ret);
+bool dataTriggerVar6(const char* szIndex, MQTypeVar& Ret);
+bool dataTriggerVar7(const char* szIndex, MQTypeVar& Ret);
+bool dataTriggerVar8(const char* szIndex, MQTypeVar& Ret);
+bool dataTriggerVar9(const char* szIndex, MQTypeVar& Ret);
 void ClearTriggers();
 void AddTrigger();
 void OutputTriggers();
@@ -182,12 +183,12 @@ PLUGIN_API DWORD OnIncomingChat(PCHAR Line, DWORD Color)
 VOID Update_INIFileName()
 {
 	if (GetCharInfo()) {
-		sprintf_s(INIFileName, "%s\\MQ2Events_%s.ini", gszINIPath, GetCharInfo()->Name);
+		sprintf_s(INIFileName, "%s\\MQ2Events_%s.ini", gPathConfig, GetCharInfo()->Name);
 		if (!_FileExists(INIFileName))
-			sprintf_s(INIFileName, "%s\\MQ2Events.ini", gszINIPath);
+			sprintf_s(INIFileName, "%s\\MQ2Events.ini", gPathConfig);
 	}
 	else
-		sprintf_s(INIFileName, "%s\\MQ2Events.ini", gszINIPath);
+		sprintf_s(INIFileName, "%s\\MQ2Events.ini", gPathConfig);
 }
 
 VOID EventCommand(PSPAWNINFO pChar, PCHAR szLine)
@@ -300,32 +301,18 @@ VOID __stdcall MyEvent(UINT ID, VOID *pData, PBLECHVALUE pValues)
 	{
 		if (DEBUGGING)
 			WriteChatf("MQ2Events::MyEvent(): Processing pValues, Name='%s', Value='%s'", pValues->Name, pValues->Value);
-		if (!strcmp("1", pValues->Name))
-			strcpy_s(TriggerVar1, pValues->Value);
-		else
-			if (!strcmp("2", pValues->Name))
-				strcpy_s(TriggerVar2, pValues->Value);
-			else
-				if (!strcmp("3", pValues->Name))
-					strcpy_s(TriggerVar3, pValues->Value);
-				else
-					if (!strcmp("4", pValues->Name))
-						strcpy_s(TriggerVar4, pValues->Value);
-					else
-						if (!strcmp("5", pValues->Name))
-							strcpy_s(TriggerVar5, pValues->Value);
-						else
-							if (!strcmp("6", pValues->Name))
-								strcpy_s(TriggerVar6, pValues->Value);
-							else
-								if (!strcmp("7", pValues->Name))
-									strcpy_s(TriggerVar7, pValues->Value);
-								else
-									if (!strcmp("8", pValues->Name))
-										strcpy_s(TriggerVar8, pValues->Value);
-									else
-										if (!strcmp("9", pValues->Name))
-											strcpy_s(TriggerVar9, pValues->Value);
+		switch (std::stoi(pValues->Name))
+		{
+		case 1: strcpy_s(TriggerVar1, pValues->Value.c_str()); break;
+		case 2: strcpy_s(TriggerVar2, pValues->Value.c_str()); break;
+		case 3: strcpy_s(TriggerVar3, pValues->Value.c_str()); break;
+		case 4: strcpy_s(TriggerVar4, pValues->Value.c_str()); break;
+		case 5: strcpy_s(TriggerVar5, pValues->Value.c_str()); break;
+		case 6: strcpy_s(TriggerVar6, pValues->Value.c_str()); break;
+		case 7: strcpy_s(TriggerVar7, pValues->Value.c_str()); break;
+		case 8: strcpy_s(TriggerVar8, pValues->Value.c_str()); break;
+		case 9: strcpy_s(TriggerVar9, pValues->Value.c_str()); break;
+		}
 		pValues = pValues->pNext;
 	}
 	stTriggers *pCurrentTrigger = pMyTriggers;
@@ -425,65 +412,65 @@ VOID LoadMyEvents()
 	}
 }
 
-BOOL dataTriggerVar1(PCHAR szIndex, MQ2TYPEVAR &Ret)
+bool dataTriggerVar1(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar1;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-BOOL dataTriggerVar2(PCHAR szIndex, MQ2TYPEVAR &Ret)
+bool dataTriggerVar2(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar2;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-BOOL dataTriggerVar3(PCHAR szIndex, MQ2TYPEVAR &Ret)
+bool dataTriggerVar3(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar3;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-BOOL dataTriggerVar4(PCHAR szIndex, MQ2TYPEVAR &Ret)
+bool dataTriggerVar4(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar4;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-BOOL dataTriggerVar5(PCHAR szIndex, MQ2TYPEVAR &Ret)
+bool dataTriggerVar5(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar5;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-BOOL dataTriggerVar6(PCHAR szIndex, MQ2TYPEVAR &Ret)
+bool dataTriggerVar6(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar6;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-BOOL dataTriggerVar7(PCHAR szIndex, MQ2TYPEVAR &Ret)
+bool dataTriggerVar7(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar7;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-BOOL dataTriggerVar8(PCHAR szIndex, MQ2TYPEVAR &Ret)
+bool dataTriggerVar8(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar8;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-BOOL dataTriggerVar9(PCHAR szIndex, MQ2TYPEVAR &Ret)
+bool dataTriggerVar9(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar9;
-	Ret.Type = pStringType;
+	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
