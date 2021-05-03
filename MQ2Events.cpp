@@ -301,7 +301,7 @@ VOID __stdcall MyEvent(UINT ID, VOID *pData, PBLECHVALUE pValues)
 	{
 		if (DEBUGGING)
 			WriteChatf("MQ2Events::MyEvent(): Processing pValues, Name='%s', Value='%s'", pValues->Name, pValues->Value);
-		switch (std::stoi(pValues->Name))
+		switch (GetIntFromString(pValues->Name, -1))
 		{
 		case 1: strcpy_s(TriggerVar1, pValues->Value.c_str()); break;
 		case 2: strcpy_s(TriggerVar2, pValues->Value.c_str()); break;
