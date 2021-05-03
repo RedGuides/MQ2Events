@@ -301,20 +301,17 @@ VOID __stdcall MyEvent(UINT ID, VOID *pData, PBLECHVALUE pValues)
 	{
 		if (DEBUGGING)
 			WriteChatf("MQ2Events::MyEvent(): Processing pValues, Name='%s', Value='%s'", pValues->Name, pValues->Value);
-		if (strcmp("*", pValues->Name.c_str()))
+		switch (GetIntFromString(pValues->Name, -1))
 		{
-			switch (std::stoi(pValues->Name))
-			{
-			case 1: strcpy_s(TriggerVar1, pValues->Value.c_str()); break;
-			case 2: strcpy_s(TriggerVar2, pValues->Value.c_str()); break;
-			case 3: strcpy_s(TriggerVar3, pValues->Value.c_str()); break;
-			case 4: strcpy_s(TriggerVar4, pValues->Value.c_str()); break;
-			case 5: strcpy_s(TriggerVar5, pValues->Value.c_str()); break;
-			case 6: strcpy_s(TriggerVar6, pValues->Value.c_str()); break;
-			case 7: strcpy_s(TriggerVar7, pValues->Value.c_str()); break;
-			case 8: strcpy_s(TriggerVar8, pValues->Value.c_str()); break;
-			case 9: strcpy_s(TriggerVar9, pValues->Value.c_str()); break;
-			}
+		case 1: strcpy_s(TriggerVar1, pValues->Value.c_str()); break;
+		case 2: strcpy_s(TriggerVar2, pValues->Value.c_str()); break;
+		case 3: strcpy_s(TriggerVar3, pValues->Value.c_str()); break;
+		case 4: strcpy_s(TriggerVar4, pValues->Value.c_str()); break;
+		case 5: strcpy_s(TriggerVar5, pValues->Value.c_str()); break;
+		case 6: strcpy_s(TriggerVar6, pValues->Value.c_str()); break;
+		case 7: strcpy_s(TriggerVar7, pValues->Value.c_str()); break;
+		case 8: strcpy_s(TriggerVar8, pValues->Value.c_str()); break;
+		case 9: strcpy_s(TriggerVar9, pValues->Value.c_str()); break;
 		}
 		pValues = pValues->pNext;
 	}
