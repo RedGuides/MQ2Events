@@ -413,7 +413,7 @@ VOID LoadMyEvents()
 				{
 					strcpy_s(szName, szTriggers);
 					GetPrivateProfileString(szTriggers, "trigger", "trigger", szTrigger, MAX_STRING, INIFileName);
-					if (pEventsEvent)
+					if (pEventsEvent && szTrigger[0])
 					{
 						ID = pEventsEvent->AddEvent(szTrigger, MyEvent, (void *)0);
 						AddTrigger(szName, ID, szTrigger, szCommand);
