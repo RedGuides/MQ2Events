@@ -49,7 +49,10 @@ constexpr auto MY_MAX_STRING = 25;
 VOID EventCommand(PSPAWNINFO pChar, PCHAR szLine);
 void __stdcall MyEvent(unsigned int ID, void *pData, PBLECHVALUE pValues);
 VOID LoadMyEvents();
-char TriggerVar1[MAX_STRING], TriggerVar2[MAX_STRING], TriggerVar3[MAX_STRING], TriggerVar4[MAX_STRING], TriggerVar5[MAX_STRING], TriggerVar6[MAX_STRING], TriggerVar7[MAX_STRING], TriggerVar8[MAX_STRING], TriggerVar9[MAX_STRING];
+
+constexpr const int NUM_EVENT_ARGS = 9;
+char TriggerVar[NUM_EVENT_ARGS][MAX_STRING] = { 0 };
+
 bool dataTriggerVar1(const char* szIndex, MQTypeVar& Ret);
 bool dataTriggerVar2(const char* szIndex, MQTypeVar& Ret);
 bool dataTriggerVar3(const char* szIndex, MQTypeVar& Ret);
@@ -301,20 +304,17 @@ VOID __stdcall MyEvent(UINT ID, VOID *pData, PBLECHVALUE pValues)
 	{
 		if (DEBUGGING)
 			WriteChatf("MQ2Events::MyEvent(): Processing pValues, Name='%s', Value='%s'", pValues->Name, pValues->Value);
-		switch (GetIntFromString(pValues->Name, -1))
+
+		int varNum = GetIntFromString(pValues->Name, 0) - 1;
+		if (varNum >= 0 && varNum < NUM_EVENT_ARGS)
 		{
-		case 1: strcpy_s(TriggerVar1, pValues->Value.c_str()); break;
-		case 2: strcpy_s(TriggerVar2, pValues->Value.c_str()); break;
-		case 3: strcpy_s(TriggerVar3, pValues->Value.c_str()); break;
-		case 4: strcpy_s(TriggerVar4, pValues->Value.c_str()); break;
-		case 5: strcpy_s(TriggerVar5, pValues->Value.c_str()); break;
-		case 6: strcpy_s(TriggerVar6, pValues->Value.c_str()); break;
-		case 7: strcpy_s(TriggerVar7, pValues->Value.c_str()); break;
-		case 8: strcpy_s(TriggerVar8, pValues->Value.c_str()); break;
-		case 9: strcpy_s(TriggerVar9, pValues->Value.c_str()); break;
+			strcpy_s(TriggerVar[varNum], pValues->Value.c_str());
+			StripTextLinks(TriggerVar[varNum]);
 		}
+
 		pValues = pValues->pNext;
 	}
+
 	stTriggers *pCurrentTrigger = pMyTriggers;
 	while (pCurrentTrigger)
 	{
@@ -414,63 +414,63 @@ VOID LoadMyEvents()
 
 bool dataTriggerVar1(const char* szIndex, MQTypeVar& Ret)
 {
-	Ret.Ptr = &TriggerVar1;
+	Ret.Ptr = TriggerVar[0];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar2(const char* szIndex, MQTypeVar& Ret)
 {
-	Ret.Ptr = &TriggerVar2;
+	Ret.Ptr = TriggerVar[1];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar3(const char* szIndex, MQTypeVar& Ret)
 {
-	Ret.Ptr = &TriggerVar3;
+	Ret.Ptr = TriggerVar[2];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar4(const char* szIndex, MQTypeVar& Ret)
 {
-	Ret.Ptr = &TriggerVar4;
+	Ret.Ptr = TriggerVar[3];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar5(const char* szIndex, MQTypeVar& Ret)
 {
-	Ret.Ptr = &TriggerVar5;
+	Ret.Ptr = TriggerVar[4];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar6(const char* szIndex, MQTypeVar& Ret)
 {
-	Ret.Ptr = &TriggerVar6;
+	Ret.Ptr = TriggerVar[5];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar7(const char* szIndex, MQTypeVar& Ret)
 {
-	Ret.Ptr = &TriggerVar7;
+	Ret.Ptr = &TriggerVar[6];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar8(const char* szIndex, MQTypeVar& Ret)
 {
-	Ret.Ptr = &TriggerVar8;
+	Ret.Ptr = TriggerVar[7];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
 bool dataTriggerVar9(const char* szIndex, MQTypeVar& Ret)
 {
-	Ret.Ptr = &TriggerVar9;
+	Ret.Ptr = TriggerVar[8];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
