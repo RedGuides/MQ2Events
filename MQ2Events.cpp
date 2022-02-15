@@ -105,8 +105,8 @@ unsigned int __stdcall MQ2DataVariableLookup(char * VarName, char * Value, size_
 {
 	strcpy_s(Value, ValueLen, VarName);
 	if (!GetCharInfo())
-		return strlen(Value);
-	return strlen(ParseMacroParameter(GetCharInfo()->pSpawn, Value, ValueLen));
+		return (unsigned int)strlen(Value);
+	return (unsigned int)strlen(ParseMacroParameter(GetCharInfo()->pSpawn, Value, ValueLen));
 }
 
 PLUGIN_API VOID InitializePlugin(VOID)
