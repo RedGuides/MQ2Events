@@ -104,9 +104,9 @@ PLUGIN_API VOID EventsDebug(PSPAWNINFO pChar, PCHAR Cmd)
 unsigned int __stdcall MQ2DataVariableLookup(char * VarName, char * Value, size_t ValueLen)
 {
 	strcpy_s(Value, ValueLen, VarName);
-	if (!GetCharInfo())
+	if (!pLocalPC)
 		return (unsigned int)strlen(Value);
-	return (unsigned int)strlen(ParseMacroParameter(GetCharInfo()->pSpawn, Value, ValueLen));
+	return (unsigned int)strlen(ParseMacroParameter(Value, ValueLen));
 }
 
 PLUGIN_API VOID InitializePlugin(VOID)
