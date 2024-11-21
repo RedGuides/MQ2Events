@@ -44,48 +44,41 @@
 PreSetup("MQ2Events");
 PLUGIN_VERSION(2.2);
 
+static void LoadMyEvents();
+static void LoadMyEvents(std::string_view name);
+static void DeleteTrigger(std::string_view name);
+
 constexpr auto MY_MAX_STRING = 25;
+constexpr int NUM_EVENT_ARGS = 9;
 
-VOID EventCommand(PSPAWNINFO pChar, PCHAR szLine);
-void __stdcall MyEvent(unsigned int ID, void *pData, PBLECHVALUE pValues);
-VOID LoadMyEvents();
+static char TriggerVar[NUM_EVENT_ARGS][MAX_STRING] = { 0 };
 
-constexpr const int NUM_EVENT_ARGS = 9;
-char TriggerVar[NUM_EVENT_ARGS][MAX_STRING] = { 0 };
-
-bool dataTriggerVar1(const char* szIndex, MQTypeVar& Ret);
-bool dataTriggerVar2(const char* szIndex, MQTypeVar& Ret);
-bool dataTriggerVar3(const char* szIndex, MQTypeVar& Ret);
-bool dataTriggerVar4(const char* szIndex, MQTypeVar& Ret);
-bool dataTriggerVar5(const char* szIndex, MQTypeVar& Ret);
-bool dataTriggerVar6(const char* szIndex, MQTypeVar& Ret);
-bool dataTriggerVar7(const char* szIndex, MQTypeVar& Ret);
-bool dataTriggerVar8(const char* szIndex, MQTypeVar& Ret);
-bool dataTriggerVar9(const char* szIndex, MQTypeVar& Ret);
-void ClearTriggers();
-void AddTrigger();
-void OutputTriggers();
-
-Blech *pEventsEvent = 0;
-bool InitOnce = TRUE;
+Blech* pEventsEvent = nullptr;
+bool InitOnce = true;
 bool DEBUGGING = false;
-bool EventCommandReady = FALSE;
+bool EventCommandReady = false;
 bool EventsActive = true;
-char EventCommandBuffer[MAX_STRING];
+std::string EventCommandBuffer;
 unsigned int eventID;
 
-struct stTriggers
+struct EventTrigger
 {
-	unsigned int ID;
-	char Name[MY_MAX_STRING];
-	stTriggers *pNext;
-};
-stTriggers* pMyTriggers = NULL;
+	std::string name;
+	std::string trigger;
 
-PLUGIN_API VOID EventsDebug(PSPAWNINFO pChar, PCHAR Cmd)
+	EventTrigger(std::string&& name, std::string&& trigger)
+		: name(std::move(name))
+		, trigger(std::move(trigger))
+	{
+	}
+};
+std::map<int, EventTrigger> s_eventTriggers;
+
+static void EventsDebug(PlayerClient*, const char* Cmd)
 {
 	char zParm[MAX_STRING];
 	GetArg(zParm, Cmd, 1);
+
 	if (zParm[0] == 0) {
 		DEBUGGING = !DEBUGGING;
 	}
@@ -98,190 +91,117 @@ PLUGIN_API VOID EventsDebug(PSPAWNINFO pChar, PCHAR Cmd)
 	else {
 		DEBUGGING = !DEBUGGING;
 	}
+
 	WriteChatf("\arMQ2Events\ax::\amDEBUGGING is now %s\ax.", DEBUGGING ? "\aoON" : "\agOFF");
 }
 
-unsigned int __stdcall MQ2DataVariableLookup(char * VarName, char * Value, size_t ValueLen)
+static unsigned int CALLBACK MQ2DataVariableLookup(char * VarName, char * Value, size_t ValueLen)
 {
 	strcpy_s(Value, ValueLen, VarName);
 	if (!pLocalPC)
-		return (unsigned int)strlen(Value);
+		return static_cast<unsigned int>(strlen(Value));
 	return static_cast<unsigned int>(strlen(ParseMacroParameter(Value, ValueLen)));
 }
 
-PLUGIN_API VOID InitializePlugin(VOID)
+static void Update_INIFileName()
 {
-	DebugSpewAlways("Initializing MQ2Events");
-	pEventsEvent = new Blech('#', '|', MQ2DataVariableLookup);
-   // Add commands, MQ2Data items, hooks, etc.
-	AddCommand("/event", EventCommand);
-	AddCommand("/eventdebug", EventsDebug);
-	AddMQ2Data("EventArg1", dataTriggerVar1);
-	AddMQ2Data("EventArg2", dataTriggerVar2);
-	AddMQ2Data("EventArg3", dataTriggerVar3);
-	AddMQ2Data("EventArg4", dataTriggerVar4);
-	AddMQ2Data("EventArg5", dataTriggerVar5);
-	AddMQ2Data("EventArg6", dataTriggerVar6);
-	AddMQ2Data("EventArg7", dataTriggerVar7);
-	AddMQ2Data("EventArg8", dataTriggerVar8);
-	AddMQ2Data("EventArg9", dataTriggerVar9);
-}
-
-// Called once, when the plugin is to shutdown
-PLUGIN_API VOID ShutdownPlugin(VOID)
-{
-   DebugSpewAlways("Shutting down MQ2Events");
-
-	if (pEventsEvent) {
-		pEventsEvent->Reset();
-		delete pEventsEvent;
-		pEventsEvent = 0;
-	}
-	RemoveCommand("/event");
-	RemoveCommand("/eventdebug");
-	RemoveMQ2Data("EventArg1");
-	RemoveMQ2Data("EventArg2");
-	RemoveMQ2Data("EventArg3");
-	RemoveMQ2Data("EventArg4");
-	RemoveMQ2Data("EventArg5");
-	RemoveMQ2Data("EventArg6");
-	RemoveMQ2Data("EventArg7");
-	RemoveMQ2Data("EventArg8");
-	RemoveMQ2Data("EventArg9");
-	ClearTriggers();
-}
-
-// This is called every time MQ pulses
-PLUGIN_API VOID OnPulse(VOID)
-{
-	if (EventCommandReady && gGameState == GAMESTATE_INGAME && EventsActive)
+	if (pLocalPC && gGameState == GAMESTATE_INGAME)
 	{
-		EventCommandReady = FALSE;
-		DoCommand(GetCharInfo()->pSpawn, EventCommandBuffer);
+		sprintf_s(INIFileName, "%s\\MQ2Events_%s.ini", gPathConfig, pLocalPC->Name);
+
+		if (_FileExists(INIFileName))
+			return;
 	}
+	
+	sprintf_s(INIFileName, "%s\\MQ2Events.ini", gPathConfig);
 }
 
-PLUGIN_API VOID SetGameState(DWORD GameState)
-{
-	if (GameState == GAMESTATE_INGAME && InitOnce)
-	{
-		LoadMyEvents();
-		InitOnce = false;
-	}
-}
-
-PLUGIN_API DWORD OnIncomingChat(PCHAR Line, DWORD Color)
-{
-	if (gbInZone && pEventsEvent)
-	{
-		CHAR szLine[MAX_STRING] = { 0 };
-		strcpy_s(szLine, Line);
-		if (DEBUGGING)
-			WriteChatf("MQ2Events::OnIncomingChat: Feed '%s'", Line);
-		pEventsEvent->Feed(szLine);
-	}
-	return 0;
-}
-
-VOID Update_INIFileName()
-{
-	if (GetCharInfo()) {
-		sprintf_s(INIFileName, "%s\\MQ2Events_%s.ini", gPathConfig, GetCharInfo()->Name);
-		if (!_FileExists(INIFileName))
-			sprintf_s(INIFileName, "%s\\MQ2Events.ini", gPathConfig);
-	}
-	else
-		sprintf_s(INIFileName, "%s\\MQ2Events.ini", gPathConfig);
-}
-
-VOID EventCommand(PSPAWNINFO pChar, PCHAR szLine)
+static void EventCommand(PlayerClient*, const char* szLine)
 {
 	char Arg1[MAX_STRING];
 	char Arg2[MAX_STRING];
-	PCHAR Arg3;
-	char szTemp[MAX_STRING];
 
 	GetArg(Arg1, szLine, 1, false);
 	GetArg(Arg2, szLine, 2, false);
-	Arg3 = GetNextArg(szLine, 2);
+	const char* Arg3 = GetNextArg(szLine, 2);
 
-	if (!_strnicmp(Arg1, "on", 2))
+	if (ci_equals(Arg1, "on"))
 	{
 		WriteChatColor("MQ2Events::Events enabled", USERCOLOR_TELL);
 		EventsActive = true;
 		return;
 	}
-	else if (!_strnicmp(Arg1, "off", 3))
+	else if (ci_equals(Arg1, "off"))
 	{
 		WriteChatColor("MQ2Events::Events disabled", USERCOLOR_TELL);
 		EventsActive = false;
 		return;
 	}
-	else if (!_strnicmp(Arg1, "load", 4))
+	else if (ci_equals(Arg1, "load"))
 	{
 		WriteChatColor("MQ2Events::Reloading INI", USERCOLOR_TELL);
 		LoadMyEvents();
 	}
-	else if (!_strnicmp(Arg1, "add", 3))
+	else if (ci_equals(Arg1, "add"))
 	{
 		if (strlen(Arg2) >= MY_MAX_STRING)
 		{
-			WriteChatf("Event name too long.  Must be < %d characters.", MY_MAX_STRING);
+			WriteChatf("Event name too long. Must be < %d characters.", MY_MAX_STRING);
 			return;
 		}
-		sprintf_s(szTemp, "MQ2Events::Adding [%s]", Arg2);
-		WriteChatColor(szTemp, USERCOLOR_TELL);
-		Update_INIFileName();
+
+		WriteChatColorf("MQ2Events::Adding [%s]", USERCOLOR_TELL, Arg2);
+
 		WritePrivateProfileString(Arg2, "trigger", "", INIFileName);
 		WritePrivateProfileString(Arg2, "command", "", INIFileName);
-		WriteChatColor(szTemp);
+		DeleteTrigger(Arg2); // Overwrote any existing trigger, so remove until new values exist
 	}
 	else if (!_strnicmp(Arg1, "delete", 6))
 	{
 		if (strlen(Arg2) >= MY_MAX_STRING)
 		{
-			WriteChatf("Event name too long.  Must be < %d characters.", MY_MAX_STRING);
+			WriteChatf("Event name too long. Must be < %d characters.", MY_MAX_STRING);
 			return;
 		}
-		sprintf_s(szTemp, "MQ2Events::Deleting [%s]", Arg2);
-		Update_INIFileName();
-		WritePrivateProfileString(Arg2, NULL, NULL, INIFileName);
-		WriteChatColor(szTemp);
-		LoadMyEvents();
+
+		WriteChatColorf("MQ2Events::Deleting [%s]", USERCOLOR_TELL, Arg2);
+
+		WritePrivateProfileString(Arg2, nullptr, nullptr, INIFileName);
+		DeleteTrigger(Arg2);
 	}
-	else if (!_strnicmp(Arg1, "settrigger", 10))
+	else if (ci_equals(Arg1, "settrigger"))
 	{
 		if (strlen(Arg2) >= MY_MAX_STRING)
 		{
-			WriteChatf("Event name too long.  Must be < %d characters.", MY_MAX_STRING);
+			WriteChatf("Event name too long. Must be < %d characters.", MY_MAX_STRING);
 			return;
 		}
-		sprintf_s(szTemp, "MQ2Events::Setting [%s] Trigger == %s", Arg2, Arg3);
-		WriteChatColor(szTemp);
-		Update_INIFileName();
+	
+		WriteChatColorf("MQ2Events::Setting [%s] Trigger == %s", USERCOLOR_TELL, Arg2, Arg3);
+
 		WritePrivateProfileString(Arg2, "trigger", Arg3, INIFileName);
+		LoadMyEvents(Arg2);
 	}
-	else if (!_strnicmp(Arg1, "setcommand", 10))
+	else if (ci_equals(Arg1, "setcommand"))
 	{
 		if (strlen(Arg2) >= MY_MAX_STRING)
 		{
-			WriteChatf("Event name too long.  Must be < %d characters.", MY_MAX_STRING);
+			WriteChatf("Event name too long. Must be < %d characters.", MY_MAX_STRING);
 			return;
 		}
-		sprintf_s(szTemp, "MQ2Events::Setting [%s] Command == %s", Arg2, Arg3);
-		WriteChatColor(szTemp);
-		Update_INIFileName();
+
+		WriteChatColorf("MQ2Events::Setting [%s] Command == %s", USERCOLOR_TELL, Arg2, Arg3);
+
 		WritePrivateProfileString(Arg2, "command", Arg3, INIFileName);
+		LoadMyEvents(Arg2);
 	}
-	else if (!_strnicmp(Arg1, "list", 4))
+	else if (ci_equals(Arg1, "list"))
 	{
 		int count = 1;
-		stTriggers *CurrentTrigger = pMyTriggers;
-		while (CurrentTrigger)
+
+		for (const auto& [_, trigger] : s_eventTriggers)
 		{
-			sprintf_s(szTemp, "MQ2Events::Trigger %u--%s", count++, CurrentTrigger->Name);
-			WriteChatColor(szTemp);
-			CurrentTrigger = CurrentTrigger->pNext;
+			WriteChatColorf("MQ2Events::Trigger %u--%s", USERCOLOR_TELL, count++, trigger.name.c_str());
 		}
 	}
 	else
@@ -294,16 +214,18 @@ VOID EventCommand(PSPAWNINFO pChar, PCHAR szLine)
 	}
 }
 
-VOID __stdcall MyEvent(UINT ID, VOID *pData, PBLECHVALUE pValues)
+void CALLBACK MyEvent(unsigned int ID, void*, PBLECHVALUE pValues)
 {
-	char szBuffer[MAX_STRING] = { 0 };
+	if (!EventsActive)
+		return;
 
 	if (DEBUGGING)
 		WriteChatf("MQ2Events::MyEvent(): ID=%u", ID);
+
 	while (pValues)
 	{
 		if (DEBUGGING)
-			WriteChatf("MQ2Events::MyEvent(): Processing pValues, Name='%s', Value='%s'", pValues->Name, pValues->Value);
+			WriteChatf("MQ2Events::MyEvent(): Processing pValues, Name='%s', Value='%s'", pValues->Name.c_str(), pValues->Value.c_str());
 
 		int varNum = GetIntFromString(pValues->Name, 0) - 1;
 		if (varNum >= 0 && varNum < NUM_EVENT_ARGS)
@@ -315,162 +237,234 @@ VOID __stdcall MyEvent(UINT ID, VOID *pData, PBLECHVALUE pValues)
 		pValues = pValues->pNext;
 	}
 
-	stTriggers *pCurrentTrigger = pMyTriggers;
-	while (pCurrentTrigger)
+	auto iter = s_eventTriggers.find(ID);
+	if (iter != s_eventTriggers.end())
 	{
-		if (pCurrentTrigger->ID == ID)
+		if (DEBUGGING)
+			WriteChatf("MQ2Events::MyEvent(): Found ID %u, setting event ready!", ID);
+
+		EventCommandBuffer = GetPrivateProfileString(iter->second.name, "command", "", INIFileName);
+		EventCommandReady = !EventCommandBuffer.empty();
+	}
+}
+
+static void ClearTriggers()
+{
+	for (const auto& [id, trigger] : s_eventTriggers)
+	{
+		DebugSpewAlways("unloading trigger [%s] #%u", trigger.name.c_str(), id);
+
+		pEventsEvent->RemoveEvent(id);
+	}
+
+	s_eventTriggers.clear();
+}
+
+static void DeleteTrigger(std::string_view name)
+{
+	for (auto iter = s_eventTriggers.begin(); iter != s_eventTriggers.end(); ++iter)
+	{
+		if (ci_equals(iter->second.name, name))
 		{
-			if (DEBUGGING)
-				WriteChatf("MQ2Events::MyEvent(): Found ID %u, setting event ready!", ID);
-			Update_INIFileName();
-			GetPrivateProfileString(pCurrentTrigger->Name, "command", "", EventCommandBuffer, MAX_STRING, INIFileName);
-			EventCommandReady = TRUE;
+			pEventsEvent->RemoveEvent(iter->first);
+
+			s_eventTriggers.erase(iter);
+			return;
 		}
-		pCurrentTrigger = pCurrentTrigger->pNext;
 	}
 }
 
-VOID ClearTriggers()
+static void AddTrigger(std::string&& name, std::string&& trigger)
 {
-	stTriggers *pNextTrigger = NULL;
-	int count = 0;
-	while (pMyTriggers && pEventsEvent)
-	{
-		DebugSpewAlways("unloading trigger [%s] #%u", pMyTriggers->Name, pMyTriggers->ID);
-		pEventsEvent->RemoveEvent(pMyTriggers->ID);
-		pNextTrigger = pMyTriggers->pNext;
-		free(pMyTriggers);
-		pMyTriggers = pNextTrigger;
-	}
-}
-
-VOID AddTrigger(PCHAR szName, UINT uID, PCHAR szTrigger, PCHAR szCommand)
-{
-	if (strlen(szName) >= MY_MAX_STRING)
-	{
+	if (name.length() >= MY_MAX_STRING)
 		return;
-	}
-	stTriggers *pCurrentTrigger = pMyTriggers;
-	stTriggers *pNextTrigger = NULL;
-	if (pCurrentTrigger)
-	{
-		while (pCurrentTrigger->pNext)
-		{
-			pCurrentTrigger = pCurrentTrigger->pNext;
-		}
-		pCurrentTrigger->pNext = (stTriggers *)malloc(sizeof(stTriggers));
-		pCurrentTrigger = pCurrentTrigger->pNext;
-		pCurrentTrigger->pNext = NULL;
 
-	}
-	else
-	{
-		pMyTriggers = (stTriggers *)malloc(sizeof(stTriggers));
-		pMyTriggers->pNext = NULL;
-		pCurrentTrigger = pMyTriggers;
-	}
-	strcpy_s(pCurrentTrigger->Name, szName);
-	pCurrentTrigger->ID = uID;
+	unsigned int id = pEventsEvent->AddEvent(trigger.c_str(), MyEvent, nullptr);
+
+	s_eventTriggers.emplace(std::piecewise_construct,
+		std::forward_as_tuple(id),
+		std::forward_as_tuple(std::move(name), std::move(trigger)));
 }
 
-VOID LoadMyEvents()
+static void LoadMyEvents()
 {
-	char szBuffer[MAX_STRING * 10];
-	char szName[MY_MAX_STRING];
-	unsigned int ID = 100;
-	char szTrigger[MAX_STRING];
-	char szCommand[MAX_STRING];
-
 	ClearTriggers();
-	Update_INIFileName();
-	GetPrivateProfileString(NULL, NULL, NULL, szBuffer, MAX_STRING * 10, INIFileName); //szBuffer = Sections
-	CHAR *szTriggers;
-	szTriggers = szBuffer; //szTriggers = Section
-	for (int i = 0; i == 0 || (szBuffer[i - 1] != 0 || szBuffer[i] != 0); i++)
+
+	std::vector<std::string> sectionNames = GetPrivateProfileSections(INIFileName);
+	for (auto&& sectionName : sectionNames)
 	{
-		if (szBuffer[i] == 0)
+		if (sectionName.length() >= MY_MAX_STRING)
 		{
-			if (strncmp(szTriggers, "Settings", 8) && strlen(szTriggers) > 0)
+			WriteChatf("Event name \ar%s \axtoo long. Must be < %d characters.", sectionName.c_str(), MY_MAX_STRING);
+		}
+		else if (!ci_equals(sectionName, "Settings"))
+		{
+			std::string trigger = GetPrivateProfileString(sectionName, "trigger", "", INIFileName);
+			if (!trigger.empty())
 			{
-				if (strlen(szTriggers) >= MY_MAX_STRING)
-				{
-					WriteChatf("Event name \ar%s \axtoo long.  Must be < %d characters.", szTriggers, MY_MAX_STRING);
-				}
-				else
-				{
-					strcpy_s(szName, szTriggers);
-					GetPrivateProfileString(szTriggers, "trigger", "trigger", szTrigger, MAX_STRING, INIFileName);
-					if (pEventsEvent && szTrigger[0])
-					{
-						ID = pEventsEvent->AddEvent(szTrigger, MyEvent, (void *)0);
-						AddTrigger(szName, ID, szTrigger, szCommand);
-					}
-				}
+				AddTrigger(std::move(sectionName), std::move(trigger));
 			}
-			szTriggers = &szBuffer[i + 1];
 		}
 	}
 }
 
-bool dataTriggerVar1(const char* szIndex, MQTypeVar& Ret)
+static void LoadMyEvents(std::string_view name)
+{
+	// Load a single event
+	DeleteTrigger(name);
+
+	std::string eventName{ name };
+	std::string trigger = GetPrivateProfileString(eventName, "trigger", "", INIFileName);
+
+	if (!trigger.empty())
+	{
+		AddTrigger(std::move(eventName), std::move(trigger));
+	}
+}
+
+
+static bool dataTriggerVar1(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = TriggerVar[0];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-bool dataTriggerVar2(const char* szIndex, MQTypeVar& Ret)
+static bool dataTriggerVar2(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = TriggerVar[1];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-bool dataTriggerVar3(const char* szIndex, MQTypeVar& Ret)
+static bool dataTriggerVar3(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = TriggerVar[2];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-bool dataTriggerVar4(const char* szIndex, MQTypeVar& Ret)
+static bool dataTriggerVar4(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = TriggerVar[3];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-bool dataTriggerVar5(const char* szIndex, MQTypeVar& Ret)
+static bool dataTriggerVar5(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = TriggerVar[4];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-bool dataTriggerVar6(const char* szIndex, MQTypeVar& Ret)
+static bool dataTriggerVar6(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = TriggerVar[5];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-bool dataTriggerVar7(const char* szIndex, MQTypeVar& Ret)
+static bool dataTriggerVar7(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = &TriggerVar[6];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-bool dataTriggerVar8(const char* szIndex, MQTypeVar& Ret)
+static bool dataTriggerVar8(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = TriggerVar[7];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
 }
 
-bool dataTriggerVar9(const char* szIndex, MQTypeVar& Ret)
+static bool dataTriggerVar9(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.Ptr = TriggerVar[8];
 	Ret.Type = mq::datatypes::pStringType;
 	return true;
+}
+
+PLUGIN_API void InitializePlugin()
+{
+	pEventsEvent = new Blech('#', '|', MQ2DataVariableLookup);
+
+	AddCommand("/event", EventCommand);
+	AddCommand("/eventdebug", EventsDebug);
+	AddMQ2Data("EventArg1", dataTriggerVar1);
+	AddMQ2Data("EventArg2", dataTriggerVar2);
+	AddMQ2Data("EventArg3", dataTriggerVar3);
+	AddMQ2Data("EventArg4", dataTriggerVar4);
+	AddMQ2Data("EventArg5", dataTriggerVar5);
+	AddMQ2Data("EventArg6", dataTriggerVar6);
+	AddMQ2Data("EventArg7", dataTriggerVar7);
+	AddMQ2Data("EventArg8", dataTriggerVar8);
+	AddMQ2Data("EventArg9", dataTriggerVar9);
+
+	Update_INIFileName();
+}
+
+PLUGIN_API void ShutdownPlugin()
+{
+	delete pEventsEvent;
+	pEventsEvent = nullptr;
+
+	RemoveCommand("/event");
+	RemoveCommand("/eventdebug");
+	RemoveMQ2Data("EventArg1");
+	RemoveMQ2Data("EventArg2");
+	RemoveMQ2Data("EventArg3");
+	RemoveMQ2Data("EventArg4");
+	RemoveMQ2Data("EventArg5");
+	RemoveMQ2Data("EventArg6");
+	RemoveMQ2Data("EventArg7");
+	RemoveMQ2Data("EventArg8");
+	RemoveMQ2Data("EventArg9");
+
+	ClearTriggers();
+}
+
+// This is called every time MQ pulses
+PLUGIN_API void OnPulse()
+{
+	if (EventCommandReady && gGameState == GAMESTATE_INGAME && EventsActive)
+	{
+		EventCommandReady = false;
+
+		EzCommand(EventCommandBuffer.c_str());
+		EventCommandBuffer.clear();
+	}
+}
+
+PLUGIN_API void SetGameState(DWORD GameState)
+{
+	Update_INIFileName();
+
+	if (GameState == GAMESTATE_INGAME && InitOnce)
+	{
+		LoadMyEvents();
+		InitOnce = false;
+	}
+
+	if (GameState == GAMESTATE_CHARSELECT)
+	{
+		InitOnce = true;
+	}
+}
+
+PLUGIN_API DWORD OnIncomingChat(const char* Line, DWORD Color)
+{
+	if (gbInZone && pEventsEvent)
+	{
+		char szLine[MAX_STRING] = { 0 };
+		strcpy_s(szLine, Line);
+
+		if (DEBUGGING)
+			WriteChatf("MQ2Events::OnIncomingChat: Feed '%s'", Line);
+
+		pEventsEvent->Feed(szLine);
+	}
+
+	return 0;
 }
