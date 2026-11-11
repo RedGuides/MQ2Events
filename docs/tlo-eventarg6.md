@@ -10,9 +10,9 @@ Holds a string set by MQ2Events trigger #6#
 
 ## Forms
 <!--tlo-forms-start-->
-### {{ renderMember(type='string', name='EventArg6') }}
-
-:   Holds text taken from MQ2Events trigger #6#. Will stay until overwritten.
+/// member | string EventArg6
+Holds text taken from MQ2Events trigger #6#. Will stay until overwritten.
+///
 
 <!--tlo-forms-end-->
 
